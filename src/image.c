@@ -121,19 +121,27 @@ image get_label(image **characters, char *string, int size)
     return b;
 }
 
-image get_label_v3(image **characters, char *string, int size)
+image get_label_v3(image **characters, char *labelindex, int size)
 {
     size = size / 10;
     if (size > 7) size = 7;
     image label = make_empty_image(0, 0, 0);
-    while (*string) {
-        image l = characters[size][(int)*string];
+    int class, i = 0, nlabels = 1;
+    int len = strlen(labelindex);
+    for(i = 0; i < len; i++)
+    {
+        if (labelindex[i] == ',') ++nlabels;
+    }
+
+    for(i = 0; i < nlabels; i++){
+        class = atoi(labelindex);
+        image l = characters[size][class];
         image n = tile_images(label, l, -size - 1 + (size + 1) / 2);
         free_image(label);
         label = n;
-        ++string;
+        labelindex=strchr(labelindex, ',') + 1;
     }
-    image b = border_image(label, label.h*.05);
+    image b = border_image(label, label.h*.02);
     free_image(label);
     return b;
 }
@@ -280,6 +288,21 @@ image **load_alphabet()
     return alphabets;
 }
 
+image **load_labels(int classes)
+{
+    int i, j;
+    const int nsize = 8;
+    image** alphabets = (image**)xcalloc(nsize, sizeof(image*));
+    for(j = 0; j < nsize; ++j){
+        alphabets[j] = (image*)xcalloc(classes, sizeof(image));
+        for(i = 0; i < classes; ++i){
+            char buff[256];
+            sprintf(buff, "data/labels/%d_%d.png", i, j);
+            alphabets[j][i] = load_image_color(buff, 0, 0);
+        }
+    }
+    return alphabets;
+}
 
 
 // Creates array of detections with prob > thresh and fills best_class for them
@@ -432,20 +455,23 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
                 draw_box_width(im, left, top, right, bot, width, red, green, blue); // 3 channels RGB
             }
             if (alphabet) {
-                char labelstr[4096] = { 0 };
-                strcat(labelstr, names[selected_detections[i].best_class]);
+                char labelindex[100] = {0};
+                char class[10] = {0};
+                sprintf(class, "%d", selected_detections[i].best_class);
+                strcat(labelindex, class);
                 int j;
                 for (j = 0; j < classes; ++j) {
                     if (selected_detections[i].det.prob[j] > thresh && j != selected_detections[i].best_class) {
-                        strcat(labelstr, ", ");
-                        strcat(labelstr, names[j]);
+                        strcat(labelindex, ", ");
+                        sprintf(class, "%d", j);
+                        strcat(labelindex, class);
                     }
                 }
-                image label = get_label_v3(alphabet, labelstr, (im.h*.02));
-                //draw_label(im, top + width, left, label, rgb);
+                image label = get_label_v3(alphabet, labelindex, (im.h*.01));
                 draw_weighted_label(im, top + width, left, label, rgb, 0.7);
                 free_image(label);
             }
+
             if (selected_detections[i].det.mask) {
                 image mask = float_to_image(14, 14, 1, selected_detections[i].det.mask);
                 image resized_mask = resize_image(mask, b.w*im.w, b.h*im.h);

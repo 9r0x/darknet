@@ -1597,7 +1597,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
     int names_size = 0;
     char **names = get_labels_custom(name_list, &names_size); //get_labels(name_list);
 
-    image **alphabet = load_alphabet();
+    image **alphabet = load_labels(names_size);
     network net = parse_network_cfg_custom(cfgfile, 1, 1); // set batch=1
     if (weightfile) {
         load_weights(&net, weightfile);
@@ -1745,7 +1745,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
     int i;
     const int nsize = 8;
     for (j = 0; j < nsize; ++j) {
-        for (i = 32; i < 127; ++i) {
+        for (i = 0; i < names_size; ++i) {
             free_image(alphabet[j][i]);
         }
         free(alphabet[j]);
